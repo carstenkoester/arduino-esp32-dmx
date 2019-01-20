@@ -22,10 +22,12 @@ typedef void (*dmx_callback_func_type)(unsigned char *);
 class WifiDMX
 {
   public:
+    using dmxBuffer = unsigned char*;
+
     static void setup(const char* WiFiSSID, const char* WiFiPassword, int universe, boolean packetDebug);
     static void setup_with_callback(const char* WiFiSSID, const char* WiFiPassword, int universe, dmx_callback_func_type callback_func, boolean packetDebug);
 
-    static unsigned char* waitForNewData();
+    static dmxBuffer waitForNewData();
 
   private:
     static void _dmx_receive(AsyncUDPPacket packet);

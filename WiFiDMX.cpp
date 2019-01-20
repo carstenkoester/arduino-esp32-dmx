@@ -84,7 +84,7 @@ void WifiDMX::setup_with_callback(const char* WiFiSSID, const char* WiFiPassword
 /*
  * When set up in poll-mode, this function blocks and waits for new DMX data.
  */
-unsigned char* WifiDMX::waitForNewData()
+WifiDMX::dmxBuffer WifiDMX::waitForNewData()
 {
   while (!_newData) {}
   _newData = false;

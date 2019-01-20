@@ -5,9 +5,10 @@
 #include "sACNPacket.h"
 
 unsigned char WifiDMX::_previousDMXBuffer[513];
-dmx_callback_func_type WifiDMX::_callbackFunc;
+dmx_callback_func_type WifiDMX::_callbackFunc = NULL;
 boolean WifiDMX::_packetDebug;
 AsyncUDP WifiDMX::_udp;
+volatile boolean WifiDMX::_newData = false;
 
 //
 //  Handy macros to conditionalize logging
@@ -15,7 +16,7 @@ AsyncUDP WifiDMX::_udp;
 #define DebugPrint(a)    if(WifiDMX::_packetDebug) Serial.print(a)
 #define DebugPrintLn(a)  if(WifiDMX::_packetDebug) Serial.println(a)
 
-void WifiDMX::setup(const char* WiFiSSID, const char* WiFiPassword, int universe, dmx_callback_func_type callbackFunc, boolean packetDebug)
+void WifiDMX::setup(const char* WiFiSSID, const char* WiFiPassword, int universe, boolean packetDebug)
 {
     WiFi.mode(WIFI_STA);
     WiFi.begin(WiFiSSID, WiFiPassword);
@@ -33,9 +34,21 @@ void WifiDMX::setup(const char* WiFiSSID, const char* WiFiPassword, int universe
     }
 
     _packetDebug = packetDebug;
+}
+
+void WifiDMX::setup_with_callback(const char* WiFiSSID, const char* WiFiPassword, int universe, dmx_callback_func_type callbackFunc, boolean packetDebug)
+{
+    setup(WiFiSSID, WiFiPassword, universe, packetDebug);
     _callbackFunc = callbackFunc;
 }
 
+
+unsigned char* WifiDMX::waitForNewData()
+{
+  while (!_newData) {}
+  _newData = false;
+  return _previousDMXBuffer;
+}
 
 void WifiDMX::dmx_receive(AsyncUDPPacket packet)
 {
@@ -93,7 +106,11 @@ void WifiDMX::dmx_receive(AsyncUDPPacket packet)
 
   // If we got here, then this is a new SACN packet
   DebugPrintLn("Received sACN packet with new DMX data");
-
   memcpy(_previousDMXBuffer, sACNPacket->packet.DMP.slots, sizeof(_previousDMXBuffer));
-  _callbackFunc(sACNPacket->packet.DMP.slots);
+  _newData = true;
+
+  if (_callbackFunc) {
+    _callbackFunc(sACNPacket->packet.DMP.slots);
+    _newData = false;
+  }
 }

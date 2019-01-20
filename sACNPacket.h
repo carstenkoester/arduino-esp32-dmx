@@ -9,7 +9,7 @@
  * http://www.cs.utah.edu/~hollaar/Theater/Programs/WiFi-sACN.cpp
  *
  */
-static union sACNPacket {
+typedef union {
   struct {
     struct {  // ACN Root Layer
       unsigned char preamble_size[2]; // 0x0010
@@ -40,5 +40,5 @@ static union sACNPacket {
       } DMP;
   } packet;
   unsigned char buffer[sizeof(packet)];
-} sACNPacket;
+} sACNPacket_t;
 # endif

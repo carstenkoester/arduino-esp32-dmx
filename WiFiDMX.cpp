@@ -39,6 +39,8 @@ void WifiDMX::setup(const char* WiFiSSID, const char* WiFiPassword, int universe
 
 void WifiDMX::dmx_receive(AsyncUDPPacket packet)
 {
+  sACNPacket_t *sACNPacket;
+
   DebugPrintLn((String) "Received packet from " + packet.remoteIP() + ", port " + packet.remotePort());
 
   // We're only processing packets that contain a full DMX universe - these would always be 638 bytes long
@@ -48,36 +50,33 @@ void WifiDMX::dmx_receive(AsyncUDPPacket packet)
     return;
   }
     
-  //  Read the sACN packet into the data structure
-  memcpy(sACNPacket.buffer, packet.data(), sizeof(sACNPacket.buffer));
+  //  Overlay the sACN packet structure onto the received packet
+  sACNPacket = (sACNPacket_t *) packet.data();
 
   /*
    * Test to see that we really have a sACN packet, by looking the fields
    * at each layer that indicates the particular protocol
    */
-  if (memcmp(sACNPacket.packet.Root.packet_id, "ASC-E1.17\0\0\0", 12) != 0)
+  if (memcmp(sACNPacket->packet.Root.packet_id, "ASC-E1.17\0\0\0", 12) != 0)
   {
-    // Not sACN root packet
     DebugPrintLn("Packet is not an sACN root packet");
     return;
   }
 
-  if (memcmp(sACNPacket.packet.Frame.vector, "\0\0\0\002", 4) != 0)
+  if (memcmp(sACNPacket->packet.Frame.vector, "\0\0\0\002", 4) != 0)
   {
-    // Not an ACN Frame
     DebugPrintLn("Packet is not an sACN frame");
     return;
   }
 
-  if (sACNPacket.packet.DMP.ad_types != 0xA1)
+  if (sACNPacket->packet.DMP.ad_types != 0xA1)
   {
-    // Not a DMP packet
     DebugPrintLn("Packet is not a DMP packet");
     return;
   }
 
   // Make sure it is a good old DMX packet, which has 0x00 in the starting slot
-  if (sACNPacket.packet.DMP.slots[0] != 0x00)
+  if (sACNPacket->packet.DMP.slots[0] != 0x00)
   {
     // Not a DMX packet
     DebugPrintLn("Packet is not a DMX packet");
@@ -86,15 +85,15 @@ void WifiDMX::dmx_receive(AsyncUDPPacket packet)
 
   // Verify that the packet content differs from previous buffer ie. that we
   // actually have _new_ data
-  if (memcmp(sACNPacket.packet.DMP.slots, _previousDMXBuffer, sizeof(_previousDMXBuffer)) == 0)
+  if (memcmp(sACNPacket->packet.DMP.slots, _previousDMXBuffer, sizeof(_previousDMXBuffer)) == 0)
   {
     DebugPrintLn("Packet is identical to current values; no change");
     return;
   }
 
-  // If we got here, then this is an SACN packet
+  // If we got here, then this is a new SACN packet
   DebugPrintLn("Received sACN packet with new DMX data");
 
-  memcpy(_previousDMXBuffer, sACNPacket.packet.DMP.slots, sizeof(_previousDMXBuffer));
-  _callbackFunc(sACNPacket.packet.DMP.slots);
+  memcpy(_previousDMXBuffer, sACNPacket->packet.DMP.slots, sizeof(_previousDMXBuffer));
+  _callbackFunc(sACNPacket->packet.DMP.slots);
 }

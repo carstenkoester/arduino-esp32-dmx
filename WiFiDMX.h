@@ -18,18 +18,23 @@
 #include <AsyncUDP.h>
 
 typedef void (*dmx_callback_func_type)(unsigned char *);
+typedef struct {const char ssid[64]; const char password[64];} wlan_credential_t;
 
 class WifiDMX
 {
   public:
     using dmxBuffer = unsigned char*;
+    volatile static unsigned long dmxLastReceived;
 
     static void setup(const char* WiFiSSID, const char* WiFiPassword, int universe, boolean packetDebug);
+    static void setup(int numCredentials, const wlan_credential_t WifiCredentials[], int universe, boolean packetDebug);
     static void setup_with_callback(const char* WiFiSSID, const char* WiFiPassword, int universe, dmx_callback_func_type callback_func, boolean packetDebug);
+    static void setup_with_callback(int numCredentials, const wlan_credential_t WifiCredentials[], int universe, dmx_callback_func_type callback_func, boolean packetDebug);
 
     static dmxBuffer waitForNewData();
 
   private:
+    static void _setup_common(int universe, boolean packetDebug);
     static void _dmx_receive(AsyncUDPPacket packet);
 
     static dmx_callback_func_type _callbackFunc;
